@@ -109,17 +109,26 @@ The experiment runs on a dedicated branch (e.g. `autoresearch/mar12`).
 
 LOOP FOREVER:
 
-1. Look at the git state: the current branch/commit we're on
-2. Modify `mlx_vis/nndescent.py` with an experimental idea.
-3. git commit
-4. Run the NNDescent benchmark (redirect output to run.log, do NOT flood your context)
-5. Read out timing, VRAM, and recall results from run.log
-6. If crashed, check `tail -n 50 run.log` for the stack trace. Fix if trivial, skip if fundamental.
-7. Record results in results.tsv (do NOT commit results.tsv, leave untracked)
-8. If time or VRAM improved AND recall is within 1% of baseline: keep the commit
-9. If no improvement or recall degraded: `git reset --hard HEAD~1`
+1. **Review history first**: `cat results.tsv` to see ALL previous experiments (kept and discarded). This is critical after context compaction — your in-context memory of past attempts is lost, but results.tsv persists. Do NOT re-try strategies that already failed. Look for patterns in what worked vs what didn't.
+2. Look at the git state: the current branch/commit we're on
+3. **Propose and reason**: Before editing code, write a brief hypothesis: what you're changing, why it might help, and what the expected effect is. Check results.tsv to confirm this direction hasn't been tried.
+4. Modify `mlx_vis/nndescent.py` with the experimental idea.
+5. git commit
+6. Run the NNDescent benchmark (redirect output to run.log, do NOT flood your context)
+7. Read out timing, VRAM, and recall results from run.log
+8. If crashed, check `tail -n 50 run.log` for the stack trace. Fix if trivial, skip if fundamental.
+9. **Recall stability check**: For changes that affect convergence (delta, thresholds, iteration count), run recall measurement at least 10 times and check the MINIMUM, not the mean. A change that passes 9/10 times but fails 1/10 is not acceptable.
+10. Record results in results.tsv (do NOT commit results.tsv, leave untracked). Include failure reason in the description for discarded experiments — this is your long-term memory.
+11. If time or VRAM improved AND recall is within 1% of baseline: keep the commit
+12. If no improvement or recall degraded: `git reset --hard HEAD~1`
 
 **Timeout**: Each benchmark run should take under 2 minutes. If it exceeds 5 minutes, kill and revert.
+
+**Avoiding local optima**: If you've had 5+ consecutive discards, try one of these escape strategies:
+- **Combine near-misses**: Two changes that individually didn't help might work together.
+- **Radical restructure**: Instead of tweaking parameters, change the algorithmic approach (e.g., different candidate generation, different distance computation strategy).
+- **Profile first**: Run with verbose=True or add timing instrumentation to find the actual bottleneck before proposing a fix. Don't guess.
+- **Read the literature**: Re-read NNDescent paper (Dong et al. 2011), study PyNNDescent, look at FAISS or Annoy for tricks.
 
 **Key optimization areas for NNDescent:**
 - `_gather_dists`: the distance computation is called every iteration. Chunking, compiled kernels, memory layout all matter.
