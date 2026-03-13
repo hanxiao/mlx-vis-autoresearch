@@ -45,6 +45,9 @@ baseline_time = df.iloc[0]["time_s"]
 
 fig, ax = plt.subplots(figsize=(16, 8))
 
+# For discarded experiments with no time data, place them at baseline level
+# so they still appear on the chart as gray dots
+df.loc[(df["status"] == "DISCARD") & (df["time_s"].isna() | (df["time_s"] <= 0)), "time_s"] = baseline_time
 valid = df[df["time_s"] > 0].copy().reset_index(drop=True)
 
 # Discarded: faint background dots
